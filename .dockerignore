@@ -73,4 +73,5 @@ tests/
 *.spec.ts
 
 # Scripts that aren't needed at runtime
-scripts/
+scripts/*
+!scripts/build.mjs
