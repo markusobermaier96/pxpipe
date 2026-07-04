@@ -1,53 +1,64 @@
 name: Deploy Hostinger VPS (Docker)
 
 on:
-  push:
-    branches:
-      - main
+    push:
+        branches:
+            - main
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v5
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v5
 
-      - name: Verify deploy files exist
-        run: |
-          test -f docker-compose.yml
-          test -f Dockerfile
+            - name: Verify deploy files exist
+              run: |
+                  test -f docker-compose.yml
+                  test -f Dockerfile
 
-      # Do not use hostinger/deploy-on-vps@v2 here: sends GitHub blob permalink pinned ${{ github.sha }}. main force-pushed
-      # rewritten, Hostinger cannot commit deploy fails before
-      # Docker runs /.hstgr-*.list.py noise just cleanup that).
-      # Instead, point Hostinger branch tip clones fresh.
+            # Do not use hostinger/deploy-on-vps@v2 here: sends GitHub blob permalink pinned ${{ github.sha }}. main force-pushed
+            # rewritten, Hostinger cannot commit deploy fails before
+            # Docker runs /.hstgr-*.list.py noise just cleanup that).
+            # Instead, point Hostinger branch tip clones fresh.
 
-      - name: Deploy Hostinger
-        env:
-          HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
-          VM_ID: ${{ vars.HOSTINGER_VM_ID }}
-          REPO_CONTENT_URL: ${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}
-        run: |
-          set -euo pipefail
+            - name: Deploy Hostinger
+              env:
+                  HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
+                  VM_ID: ${{ vars.HOSTINGER_VM_ID }}
+                  REPO_CONTENT_URL: ${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}
+              run: |
+                  set -euo pipefail
 
-          ENVIRONMENT=$(cat <<EOF
-          APP_PORT=47821
-          PORT=47821
-          HOST=0.0.0.0
-          NODE_ENV=production
-          EOF
-          )
+                  ENVIRONMENT=$(cat <<EOF
+                  APP_PORT=47821
+                  PORT=47821
+                  HOST=0.0.0.0
+                  NODE_ENV=production
+                  EOF
+                  )
 
-          BODY=$(jq -n \
-            --arg content "$REPO_CONTENT_URL" \
-            --arg project_name "pxpipe" \
-            --arg environment "$ENVIRONMENT" \
-            '{project_name: $project_name, content: $content, environment: $environment}')
+                  BODY=$(jq -n \
+                    --arg content "$REPO_CONTENT_URL" \
+                    --arg project_name "pxpipe" \
+                    --arg environment "$ENVIRONMENT" \
+                    '{project_name: $project_name, content: $content, environment: $environment}')
 
-          echo "Deploying branch URL: $REPO_CONTENT_URL"
+                  echo "Deploying branch URL: $REPO_CONTENT_URL"
 
-          curl -sSf -X POST \
-            "https://developers.hostinger.com/api/v1/vps/$VM_ID/deployments" \
-            -H "Authorization: Bearer $HOSTINGER_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$BODY"
+                  RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+                    -H "Authorization: Bearer $HOSTINGER_API_KEY" \
+                    -H "Content-Type: application/json" \
+                    -d "$BODY" \
+                    "https://developers.hostinger.com/api/v1/vps/virtual-machines/${VM_ID}/docker")
+
+                  HTTP_BODY=$(echo "$RESPONSE" | sed '$d')
+                  HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+
+                  if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+                    echo "Deployment initiated successfully."
+                  else
+                    echo "Deployment failed with status code: $HTTP_STATUS"
+                    echo "$HTTP_BODY"
+                    exit 1
+                  fi
