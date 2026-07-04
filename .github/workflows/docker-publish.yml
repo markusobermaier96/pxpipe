@@ -30,6 +30,9 @@ jobs:
               run: |
                   set -euo pipefail
 
+                  : "${HOSTINGER_API_KEY:?HOSTINGER_API_KEY secret is not set}"
+                  : "${VM_ID:?HOSTINGER_VM_ID repository variable is not set}"
+
                   ENVIRONMENT=$(cat <<EOF
                   APP_PORT=47821
                   PORT=47821
