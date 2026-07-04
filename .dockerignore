@@ -1,0 +1,76 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.dev.vars
+
+# Cloudflare Workers
+.wrangler/
+
+# OS files
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Scratch files
+*.drawmode.ts
+*.excalidraw
+
+# Agent collaboration files
+CLAUDE.md
+AGENTS.md
+HANDOFF.md
+SESSION_PLAYBOOK.md
+.claude/
+.codex/
+.cursor/
+.aider*
+.continue/
+
+# Eval artifacts
+eval/gsm8k/novel_imgs/
+eval/gist-recall/work*/*.png
+eval/corpus/
+
+# Bench artifacts
+bench/runs/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# GitHub
+.github/
+
+# Documentation (not needed for runtime)
+docs/
+README.md
+CHANGELOG.md
+LICENSE
+
+# Tests (not needed for runtime)
+tests/
+*.test.ts
+*.spec.ts
+
+# Scripts that aren't needed at runtime
+scripts/

@@ -1,0 +1,29 @@
+services:
+  pxpipe:
+    build: .
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pxpipe.rule=Host(`pxpipe.srv1519717.hstgr.cloud`)
+      - traefik.http.routers.pxpipe.entrypoints=websecure
+      - traefik.http.routers.pxpipe.tls.certresolver=letsencrypt
+      - traefik.http.services.pxpipe.loadbalancer.server.port=47821
+    volumes:
+      - ./data:/app/data:z
+      - ./logs:/app/logs:z
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - PORT=${PORT:-47821}
+      - HOST=${HOST:-0.0.0.0}
+      - ANTHROPIC_UPSTREAM=${ANTHROPIC_UPSTREAM:-https://api.anthropic.com}
+      - OPENAI_UPSTREAM=${OPENAI_UPSTREAM:-https://api.openai.com}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - PXPIPE_UPSTREAM=${PXPIPE_UPSTREAM:-}
+      - PXPIPE_PROVIDER=${PXPIPE_PROVIDER:-}
+      - PXPIPE_GATEWAY_BASE_URL=${PXPIPE_GATEWAY_BASE_URL:-}
+      - PXPIPE_GATEWAY_HEADERS=${PXPIPE_GATEWAY_HEADERS:-}
+      - PXPIPE_MODELS=${PXPIPE_MODELS:-}
+      - PXPIPE_CONFIG=${PXPIPE_CONFIG:-}
+      - PXPIPE_LOG=${PXPIPE_LOG:-/app/logs/events.jsonl}
+      - PXPIPE_DUMP_DIR=${PXPIPE_DUMP_DIR:-}
+    restart: unless-stopped
