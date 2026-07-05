@@ -4,6 +4,17 @@ All notable changes to pxpipe are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/) (pre-1.0: minor = features /
 behavioral changes, patch = fixes).
 
+## Unreleased
+
+### Security
+- Node: optional HTTP Basic auth for the dashboard. Set `DASHBOARD_USER`
+  and `DASHBOARD_PASSWORD` to gate all dashboard routes (HTML, JSON,
+  fragments) with `Authorization: Basic`; proxy traffic (`/v1/...`) is
+  unaffected and remains governed by `x-pxpipe-secret`. Constant-time
+  comparison via `node:crypto#timingSafeEqual`. The docker deploy workflow
+  forwards `DASHBOARD_USER` / `DASHBOARD_PASSWORD` from GitHub Actions
+  secrets into the container environment.
+
 ## 0.8.0 — 2026-07-03
 
 ### Security

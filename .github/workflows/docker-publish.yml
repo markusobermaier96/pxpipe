@@ -27,6 +27,8 @@ jobs:
                   HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
                   VM_ID: ${{ vars.HOSTINGER_VM_ID }}
                   REPO_CONTENT_URL: ${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}
+                  DASHBOARD_USER: ${{ secrets.DASHBOARD_USER }}
+                  DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
               run: |
                   set -euo pipefail
 
@@ -38,6 +40,8 @@ jobs:
                   PORT=47821
                   HOST=0.0.0.0
                   NODE_ENV=production
+                  DASHBOARD_USER=${DASHBOARD_USER}
+                  DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}
                   EOF
                   )
 

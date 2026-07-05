@@ -26,4 +26,6 @@ services:
       - PXPIPE_CONFIG=${PXPIPE_CONFIG:-}
       - PXPIPE_LOG=${PXPIPE_LOG:-/app/logs/events.jsonl}
       - PXPIPE_DUMP_DIR=${PXPIPE_DUMP_DIR:-}
+      - DASHBOARD_USER=${DASHBOARD_USER:-}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-}
     restart: unless-stopped

@@ -12,6 +12,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { timingSafeEqual } from 'node:crypto';
 import { createProxy, parseGatewayHeaders, resolveUpstreams, type ProxyConfig } from './core/proxy.js';
 import {
   parseExportArgv,
@@ -167,6 +168,11 @@ Environment:
   PXPIPE_LOG              JSONL events path (default ~/.pxpipe/events.jsonl)
   PXPIPE_DUMP_DIR         debug: write every rendered PNG here (what the model
                           sees); off unless set. Compress arm only.
+  DASHBOARD_USER          HTTP Basic username for the dashboard. When set
+                          together with DASHBOARD_PASSWORD, dashboard routes
+                          (HTML, JSON, fragments) require basic auth; proxy
+                          traffic is unaffected.
+  DASHBOARD_PASSWORD      HTTP Basic password for the dashboard (see above).
 
 Use with Claude Code:
   ANTHROPIC_BASE_URL=http://127.0.0.1:47821 claude
@@ -284,6 +290,54 @@ async function writeWebResponse(res: Response, out: ServerResponse): Promise<voi
     out.off('close', cancelBody);
     reader.releaseLock();
   }
+}
+
+/** HTTP Basic auth gate for the dashboard. Enabled only when both
+ *  DASHBOARD_USER and DASHBOARD_PASSWORD are set. When enabled, dashboard
+ *  routes (HTML, JSON, fragments) require a matching Authorization: Basic
+ *  header; proxy traffic (/v1/...) is unaffected and stays governed by
+ *  x-pxpipe-secret. Constant-time comparison via timingSafeEqual avoids a
+ *  prefix-match timing leak. */
+function dashboardAuthRequired(): boolean {
+  return Boolean(process.env.DASHBOARD_USER) && Boolean(process.env.DASHBOARD_PASSWORD);
+}
+
+function safeStrEq(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
+/** Returns true when the request satisfies the dashboard basic-auth gate,
+ *  or when the gate is disabled. */
+function dashboardAuthOk(req: IncomingMessage): boolean {
+  if (!dashboardAuthRequired()) return true;
+  const expectedUser = process.env.DASHBOARD_USER ?? '';
+  const expectedPass = process.env.DASHBOARD_PASSWORD ?? '';
+  const auth = req.headers.authorization ?? '';
+  if (!auth.toLowerCase().startsWith('basic ')) return false;
+  let creds: string;
+  try {
+    creds = Buffer.from(auth.slice(6), 'base64').toString('utf8');
+  } catch {
+    return false;
+  }
+  const sep = creds.indexOf(':');
+  if (sep < 0) return false;
+  const user = creds.slice(0, sep);
+  const pass = creds.slice(sep + 1);
+  return safeStrEq(user, expectedUser) && safeStrEq(pass, expectedPass);
+}
+
+function dashboardUnauthorizedResponse(): Response {
+  return new Response('Unauthorized', {
+    status: 401,
+    headers: {
+      'content-type': 'text/plain; charset=utf-8',
+      'www-authenticate': 'Basic realm="pxpipe dashboard", charset="UTF-8"',
+    },
+  });
 }
 
 /** Read the entire request body as text. Bounded at 1 MiB — every dashboard
@@ -1048,6 +1102,10 @@ async function main(): Promise<void> {
         const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
         const route = dashboardPath(url.pathname);
         if (route) {
+          if (!dashboardAuthOk(req)) {
+            await writeWebResponse(dashboardUnauthorizedResponse(), res);
+            return;
+          }
           const webRes = await dispatchDashboard(dashboard, route, req, url, opts.port);
           if (webRes) {
             await writeWebResponse(webRes, res);
